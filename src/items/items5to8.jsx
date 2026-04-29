@@ -68,11 +68,21 @@ export function Item6({ onAnswer }) {
     { a: '1,07', b: '1,7', sym: '<' }
   ]
   const [vals, setVals] = useState(['', '', ''])
-  const [active, setActive] = useState(null)
+  const [hover, setHover] = useState(null)
+  const dragRef = useRef(null)
 
-  const setSym = (s) => {
-    if (active === null) return
-    const next = [...vals]; next[active] = s; setVals(next)
+  const onDragStart = (s) => () => { dragRef.current = s }
+  const onDrop = (i) => (e) => {
+    e.preventDefault()
+    const s = dragRef.current; if (!s) return
+    const next = [...vals]; next[i] = s; setVals(next)
+    dragRef.current = null; setHover(null)
+  }
+  const onDragOver = (i) => (e) => { e.preventDefault(); if (hover !== i) setHover(i) }
+  const onDragLeave = () => setHover(null)
+  const clearSlot = (i) => () => {
+    if (!vals[i]) return
+    const next = [...vals]; next[i] = ''; setVals(next)
   }
   const check = () => {
     const right = vals.filter((v, i) => v === pairs[i].sym).length
@@ -82,7 +92,7 @@ export function Item6({ onAnswer }) {
   return (
     <div>
       <p style={{ fontSize: '1.15rem', marginBottom: '1.5rem' }}>
-        Setze das richtige Zeichen ein. Tippe auf das Feld zwischen den Zahlen, dann auf ein Symbol.
+        Setze das richtige Zeichen ein. Ziehe ein Symbol in das Feld zwischen den Zahlen.
       </p>
 
       <div style={{ background: 'var(--cream-deep)', borderRadius: 24, padding: '2rem 1.5rem' }}>
@@ -90,12 +100,17 @@ export function Item6({ onAnswer }) {
           {pairs.map((p, i) => (
             <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 80px 1fr', gap: 12, alignItems: 'center' }}>
               <div style={{ textAlign: 'right', fontFamily: 'var(--display)', fontSize: '1.6rem', fontWeight: 600, color: 'var(--plum)' }}>{p.a}</div>
-              <div onClick={() => setActive(i)}
+              <div
+                onDragOver={onDragOver(i)}
+                onDragLeave={onDragLeave}
+                onDrop={onDrop(i)}
+                onClick={clearSlot(i)}
                 style={{
                   height: 56, background: 'white',
-                  border: `3px ${active === i ? 'solid var(--rose-deep)' : 'dashed var(--rose)'}`,
+                  border: `3px ${hover === i ? 'solid var(--rose-deep)' : 'dashed var(--rose)'}`,
                   borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontFamily: 'var(--display)', fontSize: '1.6rem', fontWeight: 700, cursor: 'pointer', color: 'var(--plum)'
+                  fontFamily: 'var(--display)', fontSize: '1.6rem', fontWeight: 700,
+                  cursor: vals[i] ? 'pointer' : 'default', color: 'var(--plum)'
                 }}>
                 {vals[i]}
               </div>
@@ -105,7 +120,7 @@ export function Item6({ onAnswer }) {
         </div>
         <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: '1.75rem' }}>
           {['<', '=', '>'].map(s => (
-            <button key={s} className="symbol-btn" onClick={() => setSym(s)}>{s}</button>
+            <div key={s} className="symbol-btn" draggable onDragStart={onDragStart(s)} style={{ cursor: 'grab', userSelect: 'none' }}>{s}</div>
           ))}
         </div>
       </div>

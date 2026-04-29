@@ -3,29 +3,48 @@ import { Fraction } from '../components/ui.jsx'
 
 export function Item1({ onAnswer }) {
   const correct = ['4','2','3','0','6','0']
-  const [zones, setZones] = useState(['','','','','',''])
+  const initialPool = [
+    { id: 'a', d: '4' },
+    { id: 'b', d: '2' },
+    { id: 'c', d: '3' },
+    { id: 'd', d: '0' },
+    { id: 'e', d: '6' },
+    { id: 'f', d: '0' },
+  ]
+  const [pool, setPool] = useState(initialPool)
+  const [zones, setZones] = useState([null, null, null, null, null, null])
   const dragRef = useRef(null)
 
-  const onDragStart = (digit) => (e) => {
-    dragRef.current = digit
-    e.dataTransfer.setData('d', digit)
+  const onDragStart = (item, source, idx) => () => {
+    dragRef.current = { item, source, idx }
   }
-  const onDrop = (i) => (e) => {
+  const onDropZone = (i) => (e) => {
     e.preventDefault()
-    const d = e.dataTransfer.getData('d') || dragRef.current
-    if (!d) return
-    const next = [...zones]; next[i] = d; setZones(next)
+    const d = dragRef.current; if (!d) return
+    const newZones = [...zones]; let newPool = [...pool]
+    if (newZones[i]) newPool.push(newZones[i])
+    if (d.source === 'pool') newPool = newPool.filter(p => p.id !== d.item.id)
+    else newZones[d.idx] = null
+    newZones[i] = d.item
+    setZones(newZones); setPool(newPool); dragRef.current = null
   }
-  const clearZone = (i) => () => {
-    const next = [...zones]; next[i] = ''; setZones(next)
+  const onDropPool = (e) => {
+    e.preventDefault()
+    const d = dragRef.current; if (!d || d.source !== 'zone') return
+    const newZones = [...zones]; newZones[d.idx] = null
+    setZones(newZones); setPool([...pool, d.item]); dragRef.current = null
+  }
+  const returnToPool = (i) => () => {
+    const z = zones[i]; if (!z) return
+    const newZones = [...zones]; newZones[i] = null
+    setZones(newZones); setPool([...pool, z])
   }
   const check = () => {
-    const ok = zones.every((v, i) => v === correct[i])
+    const ok = zones.every((z, i) => z && z.d === correct[i])
     onAnswer(ok)
   }
 
   const labels = ['HT','ZT','T','H','Z','E']
-  const palette = ['4','2','3','0','6','0']
 
   return (
     <div>
@@ -44,17 +63,20 @@ export function Item1({ onAnswer }) {
           {zones.map((z, i) => (
             <div key={i} className="dropzone"
               onDragOver={(e) => e.preventDefault()}
-              onDrop={onDrop(i)}
-              onClick={clearZone(i)}
-              style={{ fontFamily: 'var(--display)', fontWeight: 700, fontSize: '1.8rem', color: 'var(--plum)' }}>
-              {z}
+              onDrop={onDropZone(i)}
+              onClick={returnToPool(i)}
+              style={{ fontFamily: 'var(--display)', fontWeight: 700, fontSize: '1.8rem', color: 'var(--plum)', cursor: z ? 'pointer' : 'default' }}>
+              {z && (
+                <span draggable onDragStart={onDragStart(z, 'zone', i)} title="Zurück in den Vorrat">{z.d}</span>
+              )}
             </div>
           ))}
         </div>
         <p style={{ fontSize: '0.85rem', color: 'var(--plum-soft)', margin: '0 0 8px' }}>Ziehe von hier:</p>
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          {palette.map((d, i) => (
-            <div key={i} className="chip" draggable onDragStart={onDragStart(d)}>{d}</div>
+        <div onDragOver={(e) => e.preventDefault()} onDrop={onDropPool}
+          style={{ display: 'flex', gap: 10, flexWrap: 'wrap', minHeight: 56, padding: 4, borderRadius: 12 }}>
+          {pool.map((it) => (
+            <div key={it.id} className="chip" draggable onDragStart={onDragStart(it, 'pool', it.id)}>{it.d}</div>
           ))}
         </div>
       </div>
